@@ -1,0 +1,19 @@
+{
+  "name": "kyoto-hacker-way-20260521",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Slides and sample apps for Kyoto Hacker Way 2026-05-21",
+  "scripts": {
+    "dev": "npm run build:diagrams && marp --server .",
+    "build:diagrams": "node scripts/build-diagrams.mjs",
+    "build:html": "npm run build:diagrams && marp 20260521_kyoto-hacker-way.md -o dist/20260521_kyoto-hacker-way.html && node -e \"require('node:fs').cpSync('assets','dist/assets',{recursive:true})\"",
+    "build:pdf": "npm run build:diagrams && marp --pdf --allow-local-files 20260521_kyoto-hacker-way.md -o dist/20260521_kyoto-hacker-way.pdf",
+    "build:pptx": "npm run build:diagrams && marp --pptx --allow-local-files 20260521_kyoto-hacker-way.md -o dist/20260521_kyoto-hacker-way.pptx",
+    "fetch:logos": "node scripts/fetch-logos.mjs"
+  },
+  "devDependencies": {
+    "@marp-team/marp-cli": "^4.1.2",
+    "@marp-team/marp-core": "^4.0.0",
+    "@mermaid-js/mermaid-cli": "^11.15.0"
+  }
+}
