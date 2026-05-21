@@ -9,6 +9,7 @@
     "build:html": "npm run build:diagrams && marp events/20260521_kyoto-hacker-way/20260521_kyoto-hacker-way.md -o dist/20260521_kyoto-hacker-way/index.html && node -e \"require('node:fs').cpSync('events/20260521_kyoto-hacker-way/assets','dist/20260521_kyoto-hacker-way/assets',{recursive:true})\"",
     "build:pdf": "npm run build:diagrams && marp --pdf --allow-local-files events/20260521_kyoto-hacker-way/20260521_kyoto-hacker-way.md -o dist/20260521_kyoto-hacker-way.pdf",
     "build:pptx": "npm run build:diagrams && marp --pptx --allow-local-files events/20260521_kyoto-hacker-way/20260521_kyoto-hacker-way.md -o dist/20260521_kyoto-hacker-way.pptx",
+    "build": "npm run build:site",
     "build:site": "npm run build:diagrams && node scripts/build-site.mjs",
     "fetch:logos": "node scripts/fetch-logos.mjs events/20260521_kyoto-hacker-way",
     "preview": "npm run build:site && wrangler dev",

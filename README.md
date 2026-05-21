@@ -107,21 +107,37 @@ npx marp events/<event-name>/<file>.md -o dist/<event-name>/index.html --allow-l
 
 このリポジトリは **Cloudflare Workers Static Assets** で `slide.<account-subdomain>.workers.dev` に公開する構成。`dist/` を丸ごと配信し、ルートには `events/*/` から自動生成されたイベント一覧 HTML を置く。Worker コードは書かない（純粋静的）。
 
-### 初回セットアップ
+公開フローは 2 種類：
+
+- **自動**: `main` push → Cloudflare Workers Builds が GitHub から取得してビルド + デプロイ（普段はこちら）
+- **手動**: 手元から `npm run deploy`（緊急時 / dashboard を介さず直接出したいとき）
+
+### 1. 初回: Cloudflare ダッシュボードで GitHub 連携を設定
+
+ブラウザでの作業（コードからはできない、最初の 1 回のみ）：
+
+1. [Cloudflare dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → 既存の `slide` Worker（無ければ最初に手元から `npm run deploy` を 1 回流して作成）を開く
+2. **Settings → Builds → Connect**（または "Set up builds"）→ **GitHub** を選択
+3. リポジトリ `YasunoriMATSUOKA/slides` と branch `main` を選択
+4. **Build settings**:
+   - Build command: `npm run build`
+   - Deploy command: `npx wrangler deploy`（デフォルト、空欄で OK）
+   - Root directory: `/`（デフォルト）
+   - Node version: `.nvmrc` で固定済み（24）。ダッシュボード側で上書きしたい場合は環境変数 `NODE_VERSION=24` を追加
+5. **Save** → 以降は `main` push のたびに自動でビルド・デプロイされる
+
+ダッシュボードの **Deployments** タブでビルドログ・履歴を確認できる。失敗時はそこにエラーが出る。
+
+### 2. 手動デプロイ（バックアップ用）
+
+ローカルからアカウント認証して直接 deploy したい場合：
 
 ```bash
-npx wrangler login   # ブラウザで Cloudflare アカウントを認証（1 回だけ）
+npx wrangler login   # ブラウザで Cloudflare アカウント認証（1 回だけ）
+npm run deploy       # build:site → wrangler deploy
 ```
 
-### デプロイ
-
-```bash
-npm run deploy
-```
-
-- 内部で `build:diagrams` → `build-site.mjs`（events を全走査して `dist/<slug>/index.html` と `dist/index.html` を生成）→ `wrangler deploy` を順に走らせる
-- 完了するとコンソールに公開 URL（`https://slide.<account-subdomain>.workers.dev`）が表示される
-- イベントを増やしたら `events/<YYYYMMDD>_<slug>/<YYYYMMDD>_<slug>.md` を追加して `npm run deploy` するだけ。`build-site.mjs` がディレクトリ走査するので、scripts の追記は不要
+完了するとコンソールに公開 URL (`https://slide.<account-subdomain>.workers.dev`) が表示される。
 
 ### 公開前にローカルで確認
 
@@ -141,6 +157,15 @@ npm run preview      # build:site → wrangler dev (localhost:8787)
 | `/<event-name>/` | `dist/<event-name>/index.html`（marp の HTML） |
 | `/<event-name>/assets/logos/<file>` | ロゴ |
 | `/<event-name>/assets/diagrams/<hash>.svg` | Mermaid 図 |
+
+### イベントを増やすときの流れ
+
+1. ローカルで `events/<YYYYMMDD>_<slug>/<YYYYMMDD>_<slug>.md` を作成（assets/logos/ も配置）
+2. md に Mermaid フェンスを書いたら `npm run build:diagrams` で SVG を生成 → git に commit
+3. `npm run preview` で表示確認
+4. `git push origin main` → Workers Builds が拾って自動デプロイ
+
+`build-site.mjs` が `events/*/` を自動走査するので、`package.json` や `wrangler.jsonc` の追記は不要。
 
 ## トラブルシューティング
 

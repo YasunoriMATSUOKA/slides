@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `events/<event-name>/<event-name>.md` — そのイベントのメインスライド（Marp）
 - `events/<event-name>/assets/logos/` — そのイベントで使う技術スタックのロゴ SVG/PNG（commit する）
-- `events/<event-name>/assets/diagrams/` — `build:diagrams` が生成する Mermaid SVG（`.gitignore` 済み、commit しない）
+- `events/<event-name>/assets/diagrams/` — `build:diagrams` が生成する Mermaid SVG（**commit する**。CI 環境 (Cloudflare Workers Builds) に Chrome がない前提のため）
 - `marp.config.mjs` / `marp.engine.mjs` — marp-cli が読む設定 + Mermaid フェンス対応のカスタムエンジン（**全イベントで共有**、ルート直下）
 - `scripts/build-diagrams.mjs` — `events/**/*.md` を自動走査して Mermaid SVG を出力（**ツールはルートで共有**）
 - `scripts/fetch-logos.mjs` — ロゴ取得スクリプト（出力先イベントを引数で指定）
@@ -22,7 +22,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## デプロイ（Cloudflare Workers）
 
-`npm run deploy` で `build:diagrams` → `build-site.mjs` → `wrangler deploy` が連続実行される。初回のみ `npx wrangler login` で Cloudflare アカウントを認証する必要がある。ローカルでの動作確認は `npm run preview`（`wrangler dev` 経由）で本番と同じ Static Assets ルーティングを再現できる。詳細は README.md 参照。
+**自動デプロイ（推奨）**: `main` ブランチへ push すると **Cloudflare Workers Builds** が GitHub 連携経由で自動ビルド + デプロイする。Build command は `npm run build`、Deploy command はデフォルト (`npx wrangler deploy`)。Node バージョンは `.nvmrc` で 24 に固定。Mermaid 図は事前 commit 済みなので CI に Chrome は不要。
+
+**手動デプロイ**: `npm run deploy` で `build:diagrams` → `build-site.mjs` → `wrangler deploy` が連続実行される。初回のみ `npx wrangler login` で Cloudflare アカウント認証が必要。ローカル動作確認は `npm run preview`（`wrangler dev` 経由）で本番と同じ Static Assets ルーティングを再現できる。詳細は README.md 参照。
 
 ## スライドの形式（Marp）
 
@@ -70,7 +72,7 @@ Marp の `bespoke` テンプレートは各スライドを `<svg><foreignObject>
 - 既存ハッシュの SVG はキャッシュとしてスキップ。不要になったハッシュは event 単位で prune される
 - **mmdc は Chrome/Chromium を要求**。`PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome` を `scripts/build-diagrams.mjs` の `puppeteerConfigFile` に渡している。別環境では同変数で上書き
 - 図のスタイル変更は CSS の `.diagram img { max-height: 380px; ... }` で。Mermaid テーマ自体を変えたいときは `scripts/build-diagrams.mjs` の `-t neutral` を `-t default | dark | forest | base` に差し替える
-- **commit 戦略**: `events/<event>/assets/diagrams/*.svg` は **commit しない**（`**/assets/diagrams/` で `.gitignore` 済み）。ハッシュ生成は決定的なので、md からいつでも再生成可能
+- **commit 戦略**: `events/<event>/assets/diagrams/*.svg` は **commit する**。Cloudflare Workers Builds (CI) のコンテナに Chrome が居る保証がないため、CI 上で mmdc を走らせず、事前生成済み SVG をそのまま配信するため。ハッシュ生成は決定的 (SHA1) なので、md を編集すれば手元で `npm run build:diagrams` を流して新しいハッシュの SVG が増え、古いハッシュは prune される。差分は git で追跡できる
 
 ### ロゴ管理
 
