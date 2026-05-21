@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "slide",
+  "compatibility_date": "2026-05-21",
+  "assets": {
+    "directory": "./dist"
+    // html_handling のデフォルト ("auto-trailing-slash") により:
+    //   /                        → dist/index.html
+    //   /<event-name>/           → dist/<event-name>/index.html
+    //   /<event-name>            → /<event-name>/ にリダイレクト
+    // が自動で解決される
+  }
+}

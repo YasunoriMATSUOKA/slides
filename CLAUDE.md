@@ -4,21 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## このリポジトリについて
 
-エンジニアの友人たちが集まるインナーサークル勉強会「Kyoto Hacker Way」(2026-05-21 開催) での登壇資料と、登壇中に付随的に説明するサンプルアプリのソースコードを管理する作業ディレクトリ。
+各種登壇イベントのスライドを **イベントごとに `events/<event-name>/` 配下に閉じ込めて** 管理する作業リポジトリ。最初のイベントは「Kyoto Hacker Way」(2026-05-21)。
 
 現状の構成：
 
-- `20260521_kyoto-hacker-way.md` — 登壇全体のメインスライド（Marp）
-- `marp.config.mjs` / `marp.engine.mjs` — marp-cli が読む設定 + Mermaid フェンス対応のカスタムエンジン
-- `assets/logos/` — 各技術スタックのロゴ SVG（DevIcon / Simple Icons から取得、commit する）
-- `scripts/fetch-logos.mjs` — ロゴ取得スクリプト（`npm run fetch:logos`）
-- 今後、各セクションを掘り下げた詳細スライドや、トピックごとの解説用サンプルアプリを増やしていく想定
+- `events/<event-name>/<event-name>.md` — そのイベントのメインスライド（Marp）
+- `events/<event-name>/assets/logos/` — そのイベントで使う技術スタックのロゴ SVG/PNG（commit する）
+- `events/<event-name>/assets/diagrams/` — `build:diagrams` が生成する Mermaid SVG（`.gitignore` 済み、commit しない）
+- `marp.config.mjs` / `marp.engine.mjs` — marp-cli が読む設定 + Mermaid フェンス対応のカスタムエンジン（**全イベントで共有**、ルート直下）
+- `scripts/build-diagrams.mjs` — `events/**/*.md` を自動走査して Mermaid SVG を出力（**ツールはルートで共有**）
+- `scripts/fetch-logos.mjs` — ロゴ取得スクリプト（出力先イベントを引数で指定）
+- `scripts/build-site.mjs` — `events/*/` を全走査して `dist/<slug>/index.html` + `dist/index.html`（イベント一覧）を生成（Cloudflare Workers 公開用ビルダ）
+- `wrangler.toml` — Cloudflare Workers Static Assets 設定。`dist/` を `slide.<account-subdomain>.workers.dev` に公開する
+- `package.json` / `node_modules` — **ルートに 1 つだけ**。イベントごとに切らない
 
-Git リポジトリではない（プレーンディレクトリ）。バージョン管理が必要になったら `git init` から始める。
+新しいイベントを追加するときは `events/<yyyymmdd>_<event-slug>/` ディレクトリを切り、その中に md と `assets/logos/` を置く。ツール群はそのまま流用される。`build-site.mjs` がディレクトリを自動走査するので scripts の追記も不要。
+
+## デプロイ（Cloudflare Workers）
+
+`npm run deploy` で `build:diagrams` → `build-site.mjs` → `wrangler deploy` が連続実行される。初回のみ `npx wrangler login` で Cloudflare アカウントを認証する必要がある。ローカルでの動作確認は `npm run preview`（`wrangler dev` 経由）で本番と同じ Static Assets ルーティングを再現できる。詳細は README.md 参照。
 
 ## スライドの形式（Marp）
 
-メインスライド `20260521_kyoto-hacker-way.md` は **Marp** で書かれている：
+メインスライド `events/20260521_kyoto-hacker-way/20260521_kyoto-hacker-way.md` は **Marp** で書かれている：
 
 - `marp: true` / `theme: gaia` / `size: 16:9` / `paginate: true`
 - フロントマターの `style:` ブロックに以下のクラス CSS を集約：
@@ -37,40 +45,42 @@ Git リポジトリではない（プレーンディレクトリ）。バージ�
 
 ```bash
 npm install          # 初回または node_modules 削除後のみ
-npm run dev          # 開発サーバ（カレントディレクトリの md を一覧 + ライブリロード）
-npm run build:html   # dist/20260521_kyoto-hacker-way.html を生成 + assets/ を dist/ へコピー
+npm run dev          # 開発サーバ（events/ 配下の md を一覧 + ライブリロード）
+npm run build:html   # dist/20260521_kyoto-hacker-way/index.html を生成 + assets/ を dist/<event>/ へコピー
 npm run build:pdf    # dist/20260521_kyoto-hacker-way.pdf を生成（要 Chromium）
 npm run build:pptx   # dist/20260521_kyoto-hacker-way.pptx を生成（要 Chromium）
-npm run fetch:logos  # assets/logos/*.svg を DevIcon / Simple Icons から再取得
+npm run fetch:logos  # events/20260521_kyoto-hacker-way/assets/logos/*.svg を DevIcon / Simple Icons から再取得
 ```
 
-- 生成物は `dist/` に出力する（`.gitignore` 済み）。HTML が `assets/logos/*.svg` を相対参照するので、`build:html` は ​`assets/` を `dist/assets/` にコピーする手順を含めている
+- 生成物は `dist/` に出力する（`.gitignore` 済み）。HTML は `dist/<event-name>/index.html` + `dist/<event-name>/assets/` の構造で、`assets/logos/*` の相対参照が `<event-name>/` 配下と同じ位置関係で解決される
 - `--allow-local-files` を付けているのは PDF/PPTX 出力時にローカル画像を埋め込めるようにするため
 - **PDF / PPTX / 画像書き出しは Chrome / Chromium / Edge を要求**する。WSL2 や Linux 環境で動かない場合は `CHROME_PATH` 環境変数で実行ファイルパスを明示するか、`google-chrome` / `chromium` を別途インストールすること
-- 個別ファイルを指定して書き出したい場合は `npx marp <file>.md -o dist/<file>.html` のように直接 `npx marp` を叩く（`node_modules/.bin/marp` を解決する）
+- 個別ファイルを指定して書き出したい場合は `npx marp events/<event>/<file>.md -o dist/<file>.html` のように直接 `npx marp` を叩く（`node_modules/.bin/marp` を解決する）
 - VS Code を使う場合は Marp for VS Code 拡張のプレビューが最も手早い（CLI と同じテーマで描画される）
+- 新しいイベントを増やしたときは `package.json` に `build:html` / `build:pdf` / `build:pptx` のイベント別 script を追加する想定（共通化が必要になったらその時点でリファクタ）
 
 ### Mermaid 構成図（mmdc プリレンダー方式）
 
 Marp の `bespoke` テンプレートは各スライドを `<svg><foreignObject>` で包む — その内側で Mermaid のランタイム描画は機能しなかったため、**ビルド時に mmdc で SVG をプリレンダーし `<img>` で参照する** 方式を採っている。
 
-- ```` ```mermaid ```` フェンスを書くと、`marp.engine.mjs` がフェンス内容を SHA1 ハッシュ化（先頭 12 文字）し、`<img src="assets/diagrams/<hash>.svg">` に変換する
-- 同じハッシュの SVG を `scripts/build-diagrams.mjs` が `@mermaid-js/mermaid-cli` (mmdc) 経由で生成し、`assets/diagrams/<hash>.svg` に保存
+- ```` ```mermaid ```` フェンスを書くと、`marp.engine.mjs` がフェンス内容を SHA1 ハッシュ化（先頭 12 文字）し、`<img src="assets/diagrams/<hash>.svg">` に変換する（md からの相対パス）
+- 同じハッシュの SVG を `scripts/build-diagrams.mjs` が `@mermaid-js/mermaid-cli` (mmdc) 経由で生成し、`events/<event>/assets/diagrams/<hash>.svg` に保存
+- `build:diagrams` は `events/**/*.md` を **自動走査** するので、新しいイベント md を追加してもスクリプトの修正は不要
 - `build:diagrams` は `build:html` / `build:pdf` / `build:pptx` / `dev` の事前ステップとして自動実行される
-- 既存ハッシュの SVG はキャッシュとしてスキップ。不要になったハッシュは prune される
+- 既存ハッシュの SVG はキャッシュとしてスキップ。不要になったハッシュは event 単位で prune される
 - **mmdc は Chrome/Chromium を要求**。`PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome` を `scripts/build-diagrams.mjs` の `puppeteerConfigFile` に渡している。別環境では同変数で上書き
 - 図のスタイル変更は CSS の `.diagram img { max-height: 380px; ... }` で。Mermaid テーマ自体を変えたいときは `scripts/build-diagrams.mjs` の `-t neutral` を `-t default | dark | forest | base` に差し替える
-- **commit 戦略**: `assets/diagrams/*.svg` は **commit しない**（`.gitignore` 済み）。ハッシュ生成は決定的なので、md からいつでも再生成可能
+- **commit 戦略**: `events/<event>/assets/diagrams/*.svg` は **commit しない**（`**/assets/diagrams/` で `.gitignore` 済み）。ハッシュ生成は決定的なので、md からいつでも再生成可能
 
 ### ロゴ管理
 
-- `assets/logos/*.svg` は **commit する**（CDN 死活に依存しないため、オフライン PDF 出力にも備えるため）
+- ロゴはイベント単位で `events/<event>/assets/logos/*.svg|png` に置き、**commit する**（CDN 死活に依存しないため、オフライン PDF 出力にも備えるため）
 - 取得元: DevIcon の `original` / `plain` variant を第一候補に、無い物は Simple Icons (`https://cdn.simpleicons.org/<slug>`) からフォールバック
-- 追加・差し替えは `scripts/fetch-logos.mjs` の `ICONS` マップを編集 → `npm run fetch:logos`
+- 追加・差し替えは `scripts/fetch-logos.mjs` の `ICONS` マップを編集 → `npm run fetch:logos`（出力先は `events/20260521_kyoto-hacker-way` 固定で書かれているので、別イベントへ取得したい場合は `node scripts/fetch-logos.mjs events/<event>` のように引数を渡す）
 - Simple Icons にも DevIcon にも無い技術名（例: SendGrid、Cosmos SDK、Better Auth）は `<span class="label">…</span>` でテキスト表示にする
-- スライド内では `<div class="logos"><img src="assets/logos/<name>.svg" alt="..." /></div>` のパターンで配置（CSS が `height: 36px` で揃える）
+- スライド内では `<div class="logos"><img src="assets/logos/<name>.svg" alt="..." /></div>` のパターンで配置（md からの相対パス。CSS が `height: 36px` で揃える）
 
-詳細スライドや追加の Markdown を増やす際は、`scripts` を増殖させずに `npx marp <file>` で都度書き出す運用を基本にする。常用ファイルが増えてきたタイミングで scripts を整理する。
+詳細スライドや追加の Markdown を増やす際は、`scripts` を増殖させずに `npx marp events/<event>/<file>.md` で都度書き出す運用を基本にする。常用ファイルが増えてきたタイミングで scripts を整理する。
 
 ## 登壇のトーンと構成（編集時に守ること）
 
@@ -82,16 +92,13 @@ Marp の `bespoke` テンプレートは各スライドを `<svg><foreignObject>
 - 絵文字は控えめに使う（🚀 🙏 ⚡ 🤖 程度。乱用しない）
 - 「Angular 推し」「React は文法より気持ち」「Cloudflare のコスパ」「Hono × Inertia の可能性」は登壇者の持論なので、勝手にトーンダウン・反対の立場に書き換えない
 
-## サンプルアプリを作るときの方針
+## サンプルアプリについて
 
-スライドに紐づくサンプルアプリを追加するときは、**登壇者の現在のスタック観**に合わせる：
+**本リポジトリではサンプルアプリのソースコードは扱わない**。スライドに紐づくサンプルアプリは別リポジトリで管理する：
 
-- フロント: TypeScript + Next.js（または Hono on Cloudflare Workers）
-- DB: D1 / Turso / Supabase のいずれか（題材に合わせる）
-- 認証が必要なら Better Auth
-- ホスティングは Cloudflare Workers を第一候補
+- テンプレート: https://github.com/YasunoriMATSUOKA/template-vp-cf-hono-inertia-react
 
-サブディレクトリで切り、`<トピック名>/` 単位で独立した npm/pnpm プロジェクトにする想定（例: `hono-inertia-demo/`, `cloudflare-d1-demo/`）。**メインスライドのディレクトリ直下に node_modules を生やさない** こと。
+このリポジトリは `events/` 配下にスライド資料のみを置き、コード本体は外部リポジトリへリンクする運用にする。
 
 ## 編集時の注意
 

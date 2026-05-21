@@ -1,5 +1,6 @@
 node_modules/
 dist/
-assets/diagrams/
+.wrangler/
+**/assets/diagrams/
 .DS_Store
 *.log

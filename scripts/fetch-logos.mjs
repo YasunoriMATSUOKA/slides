@@ -1,4 +1,8 @@
 import { writeFile, mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
+
+const EVENT_DIR = process.argv[2] || 'events/20260521_kyoto-hacker-way'
+const OUT_DIR = join(EVENT_DIR, 'assets', 'logos')
 
 const DEVICON = (name, variant = 'original') =>
   `https://cdn.jsdelivr.net/gh/devicons/devicon/icons/${name}/${name}-${variant}.svg`
@@ -50,7 +54,7 @@ const ICONS = {
   inertia:          SI('inertia'),
 }
 
-await mkdir('assets/logos', { recursive: true })
+await mkdir(OUT_DIR, { recursive: true })
 
 const failed = []
 for (const [name, url] of Object.entries(ICONS)) {
@@ -67,7 +71,7 @@ for (const [name, url] of Object.entries(ICONS)) {
       failed.push(name)
       continue
     }
-    await writeFile(`assets/logos/${name}.svg`, text, 'utf8')
+    await writeFile(join(OUT_DIR, `${name}.svg`), text, 'utf8')
     console.log(`ok   ${name}`)
   } catch (e) {
     console.error(`ERR  ${name}  ${e.message}`)
