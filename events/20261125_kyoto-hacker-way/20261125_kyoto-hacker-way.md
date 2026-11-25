@@ -183,6 +183,18 @@ style: |
   .small {
     font-size: 0.85em;
   }
+  .note-float {
+    position: absolute;
+    top: 135px;
+    left: 70px;
+    width: 500px;
+    font-size: 0.72em;
+    line-height: 1.5;
+    color: #4a5568;
+    background: #f7fafc;
+    border-left: 4px solid #4299e1;
+    padding: 10px 14px;
+  }
 ---
 
 <!-- _class: lead -->
@@ -362,7 +374,12 @@ flowchart LR
   ST -. "webhook<br/>決済完了 / 更新 / 解約" .-> CF
 ```
 
-<div class="note">画面は Stripe のホスト型 Checkout / Customer Portal に寄せ、アプリ側は webhook を受けて DB に冪等反映するだけ、が一番楽。</div>
+<div class="note-float">
+💡 <strong>一番楽だった形</strong><br>
+・画面は <strong>Stripe のホスト型</strong> に寄せる<br>
+　（Checkout / Customer Portal）<br>
+・アプリは <strong>webhook → DB に冪等反映</strong> だけ
+</div>
 
 ---
 
