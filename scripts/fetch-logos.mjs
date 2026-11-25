@@ -1,7 +1,10 @@
 import { writeFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
+// usage: node scripts/fetch-logos.mjs [events/<event>] [name ...]
+//   name を指定するとその ICONS だけ取得（イベントごとに必要なロゴだけ落とす用）
 const EVENT_DIR = process.argv[2] || 'events/20260521_kyoto-hacker-way'
+const ONLY = process.argv.slice(3)
 const OUT_DIR = join(EVENT_DIR, 'assets', 'logos')
 
 const DEVICON = (name, variant = 'original') =>
@@ -52,12 +55,34 @@ const ICONS = {
   turso:            SI('turso'),
   resend:           SI('resend'),
   inertia:          SI('inertia'),
+  // 20261125_kyoto-hacker-way で追加
+  amazonwebservices:DEVICON('amazonwebservices'),
+  vitejs:           DEVICON('vitejs'),
+  webpack:          DEVICON('webpack'),
+  npm:              DEVICON('npm', 'original-wordmark'),
+  dependabot:       SI('dependabot'),
+  claude:           SI('claude'),
+  github:           DEVICON('github'),
+  ubuntu:           DEVICON('ubuntu'),
+  contabo:          SI('contabo'),
+  discord:          SI('discord'),
+  socket:           SI('socket'),
+  // pritunl / opennext: Simple Icons / DevIcon にロゴ無し（slide ではテキスト表示）
 }
+
+const unknown = ONLY.filter((n) => !(n in ICONS))
+if (unknown.length) {
+  console.error(`unknown icon name(s): ${unknown.join(', ')}`)
+  process.exit(1)
+}
+const TARGETS = ONLY.length
+  ? Object.entries(ICONS).filter(([n]) => ONLY.includes(n))
+  : Object.entries(ICONS)
 
 await mkdir(OUT_DIR, { recursive: true })
 
 const failed = []
-for (const [name, url] of Object.entries(ICONS)) {
+for (const [name, url] of TARGETS) {
   try {
     const res = await fetch(url, { redirect: 'follow' })
     if (!res.ok) {
