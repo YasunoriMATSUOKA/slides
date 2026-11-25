@@ -1,0 +1,21 @@
+# Dependabot: npm の devDependencies を定例で自動更新する
+# - minor / patch はまとめて 1 本の PR
+# - major はグループに含めず、パッケージごとに個別の PR（Dependabot のデフォルト挙動）
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
+    # 公開直後の悪意ある version を踏まないよう、リリースから一定期間待ってから PR を作る
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "deps"

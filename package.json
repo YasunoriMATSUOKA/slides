@@ -16,9 +16,17 @@
     "deploy": "npm run build:site && wrangler deploy"
   },
   "devDependencies": {
-    "@marp-team/marp-cli": "^4.1.2",
-    "@marp-team/marp-core": "^4.0.0",
-    "@mermaid-js/mermaid-cli": "^11.15.0",
-    "wrangler": "^4.0.0"
+    "@marp-team/marp-cli": "^4.5.1",
+    "@marp-team/marp-core": "^4.4.0",
+    "@mermaid-js/mermaid-cli": "^12.2.0",
+    "wrangler": "^4.164.0"
+  },
+  "overrides": {
+    "@marp-team/marp-cli": {
+      "puppeteer-core": "^25.18.1"
+    },
+    "@marp-team/marp-core": {
+      "katex": "^0.18.10"
+    }
   }
 }
