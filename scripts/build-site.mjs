@@ -1,6 +1,7 @@
-import { readFile, writeFile, mkdir, readdir, rm, cp } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, readdir, rm, cp, access } from 'node:fs/promises'
 import { join, basename } from 'node:path'
 import { spawn } from 'node:child_process'
+import { ogpHash } from './build-ogp.mjs'
 
 const EVENTS_DIR = 'events'
 const DIST_DIR = 'dist'
@@ -9,6 +10,11 @@ const MARP_TIMEOUT_MS = 60_000
 
 const DATE_PREFIX = /^(\d{4})(\d{2})(\d{2})_/
 const HEADER_FRONTMATTER = /^header:\s*['"]?(.+?)['"]?\s*$/m
+const DESCRIPTION_FRONTMATTER = /^description:\s*['"]?(.+?)['"]?\s*$/m
+
+// 公開 URL。OGP (og:image / og:url) は絶対 URL が必須なのでここで組み立てる
+const SITE_URL = (process.env.SITE_URL || 'https://slide.yasunori-matsuoka.workers.dev').replace(/\/+$/, '')
+const SITE_DESCRIPTION = 'YasunoriMATSUOKA の登壇スライド集'
 
 function log(msg) {
   const t = new Date().toISOString().slice(11, 19)
@@ -26,12 +32,22 @@ function parseEventDir(name) {
   }
 }
 
-async function readTitle(mdPath) {
+async function readMeta(mdPath) {
   const src = await readFile(mdPath, 'utf8')
   const fmEnd = src.indexOf('\n---', 3)
   const frontmatter = fmEnd > 0 ? src.slice(0, fmEnd) : src
-  const m = HEADER_FRONTMATTER.exec(frontmatter)
-  return m ? m[1].trim() : basename(mdPath, '.md')
+  const title = HEADER_FRONTMATTER.exec(frontmatter)?.[1].trim() || basename(mdPath, '.md')
+  const description = DESCRIPTION_FRONTMATTER.exec(frontmatter)?.[1].trim() || ''
+  return { title, description, ogpHash: ogpHash(src) }
+}
+
+async function exists(p) {
+  try {
+    await access(p)
+    return true
+  } catch {
+    return false
+  }
 }
 
 function runMarp(args) {
@@ -60,9 +76,15 @@ async function buildEvent(meta) {
 
   await mkdir(outDir, { recursive: true })
 
+  const pageUrl = `${SITE_URL}/${meta.slug}/`
+  const ogArgs = ['--url', pageUrl]
+  if (meta.description) ogArgs.push('--description', meta.description)
+  if (meta.ogImage) ogArgs.push('--og-image', `${pageUrl}${meta.ogImage}`)
+  else log(`warn   ${meta.slug}  OGP 画像なし (npm run build:ogp を Chrome のある環境で実行して commit してください)`)
+
   log(`marp   ${meta.slug}  →  ${outHtml}`)
   const t0 = Date.now()
-  await runMarp([mdPath, '-o', outHtml, '--allow-local-files'])
+  await runMarp([mdPath, '-o', outHtml, '--allow-local-files', ...ogArgs])
   log(`marp   ${meta.slug}  done in ${Date.now() - t0}ms`)
 
   const srcAssets = join(EVENTS_DIR, meta.slug, 'assets')
@@ -75,6 +97,26 @@ async function buildEvent(meta) {
 
 function escapeHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+function renderIndexOgp(events) {
+  const latest = events.find((e) => e.ogImage)
+  const tags = [
+    `<meta property="og:type" content="website">`,
+    `<meta property="og:title" content="登壇スライド一覧 — YasunoriMATSUOKA">`,
+    `<meta property="og:description" content="${escapeHtml(SITE_DESCRIPTION)}">`,
+    `<meta property="og:url" content="${SITE_URL}/">`,
+    `<link rel="canonical" href="${SITE_URL}/">`,
+  ]
+  if (latest) {
+    tags.push(
+      `<meta property="og:image" content="${SITE_URL}/${latest.slug}/${latest.ogImage}">`,
+      `<meta name="twitter:card" content="summary_large_image">`,
+    )
+  } else {
+    tags.push(`<meta name="twitter:card" content="summary">`)
+  }
+  return tags.join('\n')
 }
 
 function renderIndex(events) {
@@ -97,7 +139,8 @@ function renderIndex(events) {
 <meta charset="utf-8">
 <title>登壇スライド一覧 — YasunoriMATSUOKA</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="YasunoriMATSUOKA の登壇スライド集">
+<meta name="description" content="${escapeHtml(SITE_DESCRIPTION)}">
+${renderIndexOgp(events)}
 <style>
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
@@ -214,7 +257,9 @@ async function main() {
     }
     const mdPath = join(EVENTS_DIR, meta.slug, `${meta.slug}.md`)
     try {
-      meta.title = await readTitle(mdPath)
+      Object.assign(meta, await readMeta(mdPath))
+      const ogRel = `assets/ogp/${meta.ogpHash}.png`
+      meta.ogImage = (await exists(join(EVENTS_DIR, meta.slug, ogRel))) ? ogRel : null
     } catch (err) {
       console.error(`ERROR  ${meta.slug}  cannot read ${mdPath}: ${err.message}`)
       continue
