@@ -5,6 +5,8 @@ paginate: true
 size: 16:9
 header: 'フロントエンド中心キャリアでの技術スタック変遷'
 footer: 'YasunoriMATSUOKA'
+title: 'フロントエンド中心キャリアでの技術スタック変遷 | Kyoto Hacker Way 2026-05-21'
+description: 'マネージドサービスと共に (できるだけ手抜きで) 歩んできた技術スタックの変遷と、これから。Kyoto Hacker Way 2026-05-21 登壇資料'
 style: |
   section {
     font-size: 26px;

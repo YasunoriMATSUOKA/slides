@@ -14,6 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `marp.config.mjs` / `marp.engine.mjs` — marp-cli が読む設定 + Mermaid フェンス対応のカスタムエンジン（**全イベントで共有**、ルート直下）
 - `scripts/build-diagrams.mjs` — `events/**/*.md` を自動走査して Mermaid SVG を出力（**ツールはルートで共有**）
 - `scripts/fetch-logos.mjs` — ロゴ取得スクリプト（出力先イベントを引数で指定）
+- `scripts/build-ogp.mjs` — 各イベントの表紙 (1 枚目) を OGP 画像 `events/<event>/assets/ogp/<hash>.png` として出力（**commit する**。詳細は下の「OGP」節）
 - `scripts/build-site.mjs` — `events/*/` を全走査して `dist/<slug>/index.html` + `dist/index.html`（イベント一覧）を生成（Cloudflare Workers 公開用ビルダ）
 - `wrangler.toml` — Cloudflare Workers Static Assets 設定。`dist/` を `slide.<account-subdomain>.workers.dev` に公開する
 - `package.json` / `node_modules` — **ルートに 1 つだけ**。イベントごとに切らない
@@ -24,7 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **自動デプロイ（推奨）**: `main` ブランチへ push すると **Cloudflare Workers Builds** が GitHub 連携経由で自動ビルド + デプロイする。Build command は `npm run build`、Deploy command はデフォルト (`npx wrangler deploy`)。Node バージョンは `.nvmrc` で 24 に固定。Mermaid 図は事前 commit 済みなので CI に Chrome は不要。
 
-**手動デプロイ**: `npm run deploy` で `build:diagrams` → `build-site.mjs` → `wrangler deploy` が連続実行される。初回のみ `npx wrangler login` で Cloudflare アカウント認証が必要。ローカル動作確認は `npm run preview`（`wrangler dev` 経由）で本番と同じ Static Assets ルーティングを再現できる。詳細は README.md 参照。
+**手動デプロイ**: `npm run deploy` で `build:diagrams` → `build:ogp` → `build-site.mjs` → `wrangler deploy` が連続実行される。初回のみ `npx wrangler login` で Cloudflare アカウント認証が必要。ローカル動作確認は `npm run preview`（`wrangler dev` 経由）で本番と同じ Static Assets ルーティングを再現できる。詳細は README.md 参照。
 
 ## スライドの形式（Marp）
 
@@ -83,6 +84,15 @@ Marp の `bespoke` テンプレートは各スライドを `<svg><foreignObject>
 - スライド内では `<div class="logos"><img src="assets/logos/<name>.svg" alt="..." /></div>` のパターンで配置（md からの相対パス。CSS が `height: 36px` で揃える）
 
 詳細スライドや追加の Markdown を増やす際は、`scripts` を増殖させずに `npx marp events/<event>/<file>.md` で都度書き出す運用を基本にする。常用ファイルが増えてきたタイミングで scripts を整理する。
+
+### OGP（SNS シェア時のカード表示）
+
+- 各 md のフロントマターに `title:`（og:title / `<title>`）と `description:`（og:description）を書く
+- `scripts/build-ogp.mjs` が表紙スライドを `marp --image png` で 1280x720 の PNG にし、`events/<event>/assets/ogp/<hash>.png` に保存。hash は「フロントマター + 1 枚目スライド」の SHA1 先頭 12 文字なので、**表紙かフロントマターを変えたときだけ** 再生成され、古い PNG は prune される
+- `scripts/build-site.mjs` が `--og-image` / `--url` / `--description` を marp に渡し、`twitter:card=summary_large_image` 付きの HTML を出力。トップの一覧ページは最新イベントの OGP 画像を使う
+- og:image / og:url は絶対 URL が必要なので、公開 URL を `SITE_URL` 環境変数（デフォルト `https://slide.yasunori-matsuoka.workers.dev`）から組み立てる
+- **commit 戦略**: Mermaid SVG と同じく PNG は **commit する**（CI に Chrome がない前提）。表紙やフロントマターを編集したら、手元で `npm run build:site`（内部で `build:ogp` が走る）を実行し、生成された PNG も commit する。CI でキャッシュが無い場合は warning を出し、og:image なしで続行する
+- marp-cli を子プロセスから呼ぶときは `--no-stdin` が必須（付けないと stdin 待ちで固まる）
 
 ## 登壇のトーンと構成（編集時に守ること）
 

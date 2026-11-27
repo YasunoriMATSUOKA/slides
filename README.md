@@ -162,6 +162,7 @@ npm run preview      # build:site → wrangler dev (localhost:8787)
 
 1. ローカルで `events/<YYYYMMDD>_<slug>/<YYYYMMDD>_<slug>.md` を作成（assets/logos/ も配置）
 2. md に Mermaid フェンスを書いたら `npm run build:diagrams` で SVG を生成 → git に commit
+   - フロントマターに `title:` / `description:` を書き、`npm run build:ogp` で表紙から OGP 画像 (`assets/ogp/<hash>.png`) を生成 → これも commit（CI に Chrome が無いため）
 3. `npm run preview` で表示確認
 4. `git push origin main` → Workers Builds が拾って自動デプロイ
 

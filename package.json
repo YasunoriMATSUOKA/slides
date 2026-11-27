@@ -10,10 +10,11 @@
     "build:pdf": "npm run build:diagrams && marp --pdf --allow-local-files events/20260521_kyoto-hacker-way/20260521_kyoto-hacker-way.md -o dist/20260521_kyoto-hacker-way.pdf",
     "build:pptx": "npm run build:diagrams && marp --pptx --allow-local-files events/20260521_kyoto-hacker-way/20260521_kyoto-hacker-way.md -o dist/20260521_kyoto-hacker-way.pptx",
     "build": "npm run build:site",
-    "build:site": "npm run build:diagrams && node scripts/build-site.mjs",
+    "build:site": "npm run build:diagrams && npm run build:ogp && node scripts/build-site.mjs",
     "fetch:logos": "node scripts/fetch-logos.mjs events/20260521_kyoto-hacker-way",
     "preview": "npm run build:site && wrangler dev",
-    "deploy": "npm run build:site && wrangler deploy"
+    "deploy": "npm run build:site && wrangler deploy",
+    "build:ogp": "node scripts/build-ogp.mjs"
   },
   "devDependencies": {
     "@marp-team/marp-cli": "^4.5.1",

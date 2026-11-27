@@ -5,6 +5,8 @@ paginate: true
 size: 16:9
 header: '最近のお仕事紹介 — 本業・副業・ボランティア'
 footer: 'YasunoriMATSUOKA'
+title: '最近のお仕事紹介 — 本業・副業・ボランティア | Kyoto Hacker Way 2026-11-25'
+description: '塩漬けフロントエンドの救出、Claude Code × Stripe 決済、ブロックチェーンノード運用代行、公式 OSS ミラー運用。Kyoto Hacker Way 2026-11-25 登壇資料'
 style: |
   section {
     font-size: 26px;
